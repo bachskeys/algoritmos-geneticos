@@ -7,12 +7,13 @@ toolbox = base.Toolbox()
 
 #todo esto es para crear un cromosoma con las caracteristicas requeridas para despues utilizar
 #las funciones del toolbox mutar y cruzar de forma sensilla.
-creator.create("FitnessMax",base.Fitness,weights=(1.0,))
-creator.create("Individual",list,fitness=creator.FitnessMax)
+creator.create("FitnessMin",base.Fitness,weights=(-1.0,))
+creator.create("Individual",list,fitness=creator.FitnessMin)
 toolbox.register('attr_bool',random.randint,0,1)
 
 
 toolbox.register('individual', tools.initRepeat, creator.Individual, toolbox.attr_bool, 5)
+toolbox.register('population',tools.initRepeat, list, toolbox.individual)
 
 
 
@@ -49,7 +50,53 @@ def aptitudIndividuo(individual):
     return 1,
 
     
-print('buscando al individuo',aptitudIndividuo(toolbox.individual()))
+toolbox.register('evaluate',aptitudIndividuo)
+toolbox.register("mate",tools.cxTwoPoint)
+toolbox.register("mutate",tools.mutFlipBit,indpb=0.50)
+toolbox.register("select",tools.selTournament,tournsize=2)
+
+
+def main():
+    poblacion = toolbox.population(n=50)
+    CXPB, MUTPB, NGEN = 0.5, 0.2, 40
+
+    #evaluar la poblacion
+    aptitudesPoblacion = map(toolbox.evaluate,poblacion)
+    for ind,fit in zip(poblacion,aptitudesPoblacion):
+        ind.fitness.values=fit
+    for g in range(NGEN):
+        #seleccionar los padres de la siguiente generacion de individuos
+        offspring = toolbox.select(poblacion,len(poblacion))
+        #clonar a los individuos
+        offspring = toolbox.clone(offspring)
+        #applicar crusa sobre los selecionados
+        for child1,child2 in zip(offspring[::2],offspring[1::2]):
+            if random.random()< CXPB:
+                toolbox.mate(child1,child2)
+                del child1.fitness.values
+                del child2.fitness.values
+
+    for mutant in offspring:
+        if random.random()<MUTPB:
+            toolbox.mutate(mutant)
+            del mutant.fitness.values
+        
+    poblacion[:] = offspring
+    print(poblacion)
+
+    return poblacion,
+
+
+poblacion = main()
+
+aptitudesPoblacion = map(toolbox.evaluate,poblacion)
+
+print(aptitudesPoblacion)
+
+
+
+
+
 
 
 
