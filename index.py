@@ -2,6 +2,8 @@ import random
 from deap import base
 from deap import creator
 from deap import tools
+from deap import algorithms
+import numpy
 toolbox = base.Toolbox()
 
 
@@ -21,33 +23,32 @@ toolbox.register('population',tools.initRepeat, list, toolbox.individual)
 def restriccion2(individual):
     x1, x2, x3, x4, x5 = [individual[i] for i in (0,1,2,3,4)]
     suma = x5+x4
-    print(individual)
-    print(suma)
     if suma <= 1:
-        return True,
+        return True
     else:
-        return False,
+        return False
 
 #primer restricion donde x1+x2+x3+x4+x4 = 3 para aprobar la restriccion o ser penalizado
 def restriccion1(individual):
     suma = sum(individual)
-    print(individual)
-    print(suma)
-    if suma < 3:
-        return True,
+    if suma == 3:
+        return True
     else:
-        return False,
+        return False
 #una vez que definimos todad las restricciones llamamos esta fucion que se le pasara al toolbox como parametro
 #este hara su trabajo evolucionando los cromosomas y implementando dicha funcion para calcular los valores de aptitudes
 # de los nuevos miebros de la poblacion
 def aptitudIndividuo(individual):
     x1, x2, x3, x4, x5 = [individual[i] for i in (0,1,2,3,4)]
+
     validaRestriccion1 = restriccion1(individual)
     validaRestriccion2 = restriccion2(individual)
-    print('evaluando restriciones 1',validaRestriccion1," 2 ",validaRestriccion2)
-    apitud = 2*x1+2.4*x2+3*x3+4*x4+4.4*x5
-    print('evaluando la aptitud del individuo sin restriccion', apitud)
-    return 1,
+    aptitud = 2*x1+2.4*x2+3*x3+4*x4+4.4*x5
+    aptitud = aptitud if aptitud != 0 else 100000.0 
+    aptitud = aptitud if validaRestriccion1 else 10000.0
+    aptitud = aptitud if validaRestriccion2 else aptitud+8.0
+  
+    return aptitud,
 
     
 toolbox.register('evaluate',aptitudIndividuo)
@@ -57,41 +58,28 @@ toolbox.register("select",tools.selTournament,tournsize=2)
 
 
 def main():
-    poblacion = toolbox.population(n=50)
-    CXPB, MUTPB, NGEN = 0.5, 0.2, 40
+    pop = toolbox.population(n=2)
+    print('poblacion inicial',pop)
+    CBXPB,MUTPB,NGEN = 0.5,0.2,15
+    hof = tools.HallOfFame(1)
+    stats = tools.Statistics(lambda ind: ind.fitness.values)
+    stats.register('avg',numpy.mean)
+    stats.register('std',numpy.std)
+    stats.register('min',numpy.min)
+    stats.register('max',numpy.max)
 
-    #evaluar la poblacion
-    aptitudesPoblacion = map(toolbox.evaluate,poblacion)
-    for ind,fit in zip(poblacion,aptitudesPoblacion):
-        ind.fitness.values=fit
-    for g in range(NGEN):
-        #seleccionar los padres de la siguiente generacion de individuos
-        offspring = toolbox.select(poblacion,len(poblacion))
-        #clonar a los individuos
-        offspring = toolbox.clone(offspring)
-        #applicar crusa sobre los selecionados
-        for child1,child2 in zip(offspring[::2],offspring[1::2]):
-            if random.random()< CXPB:
-                toolbox.mate(child1,child2)
-                del child1.fitness.values
-                del child2.fitness.values
+    algorithms.eaSimple(pop, toolbox,cxpb=CBXPB,mutpb=MUTPB,ngen=NGEN,stats=stats,halloffame=hof)
 
-    for mutant in offspring:
-        if random.random()<MUTPB:
-            toolbox.mutate(mutant)
-            del mutant.fitness.values
-        
-    poblacion[:] = offspring
-    print(poblacion)
+    return pop, stats, hof
 
-    return poblacion,
+if __name__ == "__main__":
+    pops,stats,hof = main()
+    print('looking at stats', stats)
+    print('el mejor individuo de acuerdo a la funcion',hof)
+   
 
 
-poblacion = main()
 
-aptitudesPoblacion = map(toolbox.evaluate,poblacion)
-
-print(aptitudesPoblacion)
 
 
 
